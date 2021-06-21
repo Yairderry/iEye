@@ -8,31 +8,33 @@ function App() {
   let { transcript, listening, browserSupportsSpeechRecognition } =
     useSpeechRecognition();
 
+  // Make sure the device is always listening to new commands
   useEffect(() => {
     if (!listening) SpeechRecognition.startListening();
-
     if (!transcript) return;
 
-    const command = transcript.split(" ")[0];
+    let command = transcript.split(" ")[0];
+    // In case the device support hebrew
+    if (command.split("")[0] === "") command.slice(1);
 
     switch (command) {
-      case "‏display":
+      case "display":
         console.log("display");
         break;
 
-      case "‏read":
+      case "read":
         console.log("read");
         break;
 
-      case "‏describe":
+      case "describe":
         console.log("describe");
         break;
 
-      case "‏find":
+      case "find":
         console.log("find");
         break;
 
-      case "‏help":
+      case "help":
         console.log("help");
         break;
 
