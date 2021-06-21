@@ -2,6 +2,7 @@ import "./styles/App.css";
 import React, { useEffect, useRef, useState } from "react";
 import * as tf from "@tensorflow/tfjs";
 import * as cocossd from "@tensorflow-models/coco-ssd";
+import { recognize } from "tesseract.js";
 import Webcam from "react-webcam";
 import SpeechRecognition, {
   useSpeechRecognition,
@@ -16,7 +17,6 @@ function App() {
   const loadModels = async () => {
     const currentNet = await cocossd.load();
     setNet(currentNet);
-    console.log("model loaded.");
   };
 
   const setRefs = () => {
@@ -62,12 +62,30 @@ function App() {
     return viewToText(view);
   };
 
+  const read = async () => {
+    const video = webcamRef.current.video;
+    const canvas = canvasRef.current;
+
+    const context = canvas.getContext("2d");
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const {
+      data: { text },
+    } = await recognize(canvas, "eng+heb", {
+      logger: (m) => console.log(m),
+    });
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    return text;
+  };
+
   let { transcript, listening, browserSupportsSpeechRecognition } =
     useSpeechRecognition();
 
   useEffect(() => {
     setRefs();
-    loadModels();
+    loadModels()
+      .then(() => console.log("models loaded."))
+      .catch((err) => console.log(err));
   }, []);
 
   // Make sure the device is always listening to new commands
@@ -89,6 +107,9 @@ function App() {
         break;
       case "read":
         console.log("reading...");
+        read()
+          .then((text) => console.log(text))
+          .catch((err) => console.log(err));
         break;
       case "describe":
         console.log("describing...");
