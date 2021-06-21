@@ -1,12 +1,74 @@
-import "./App.css";
-import React, { useEffect, useState } from "react";
+import "./styles/App.css";
+import React, { useEffect, useRef, useState } from "react";
+import * as tf from "@tensorflow/tfjs";
+import * as cocossd from "@tensorflow-models/coco-ssd";
+import Webcam from "react-webcam";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
+import { drawRect, findCenterOfMass, viewToText } from "./utils";
 
 function App() {
+  const webcamRef = useRef();
+  const canvasRef = useRef();
+  const [net, setNet] = useState();
+
+  const loadModels = async () => {
+    const currentNet = await cocossd.load();
+    setNet(currentNet);
+    console.log("model loaded.");
+  };
+
+  const setRefs = () => {
+    if (
+      typeof webcamRef.current === "undefined" ||
+      webcamRef.current === null ||
+      webcamRef.current.video.readyState !== 4
+    )
+      return setTimeout(setRefs, 10);
+
+    // Get Video Properties
+    const videoWidth = webcamRef.current.video.videoWidth;
+    const videoHeight = webcamRef.current.video.videoHeight;
+
+    // Set video width
+    webcamRef.current.video.width = videoWidth;
+    webcamRef.current.video.height = videoHeight;
+
+    // Set canvas height and width
+    canvasRef.current.width = videoWidth;
+    canvasRef.current.height = videoHeight;
+  };
+
+  const textToSpeech = (text) => {
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.rate = 0.85;
+    speechSynthesis.speak(utter);
+  };
+
+  const display = async () => {
+    const video = webcamRef.current.video;
+    const obj = await net.detect(video);
+
+    // Draw detection for development
+    const ctx = canvasRef.current.getContext("2d");
+    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    drawRect(obj, ctx);
+
+    const view = findCenterOfMass(obj, {
+      height: canvasRef.current.height,
+      width: canvasRef.current.width,
+    });
+    return viewToText(view);
+  };
+
   let { transcript, listening, browserSupportsSpeechRecognition } =
     useSpeechRecognition();
+
+  useEffect(() => {
+    setRefs();
+    loadModels();
+  }, []);
 
   // Make sure the device is always listening to new commands
   useEffect(() => {
@@ -14,30 +76,29 @@ function App() {
     if (!transcript) return;
 
     let command = transcript.split(" ")[0];
+
     // In case the device support hebrew
-    if (command.split("")[0] === "") command.slice(1);
+    if (command.split("")[0] === "‏") command = command.slice(1);
 
     switch (command) {
       case "display":
-        console.log("display");
+        console.log("displaying...");
+        display()
+          .then((text) => textToSpeech(text))
+          .catch((err) => console.log(err));
         break;
-
       case "read":
-        console.log("read");
+        console.log("reading...");
         break;
-
       case "describe":
-        console.log("describe");
+        console.log("describing...");
         break;
-
       case "find":
-        console.log("find");
+        console.log("finding...");
         break;
-
       case "help":
-        console.log("help");
+        console.log("helping...");
         break;
-
       default:
         break;
     }
@@ -49,12 +110,36 @@ function App() {
 
   return (
     <div className="App">
-      <div>
-        <p>Microphone: {listening ? "on" : "off"}</p>
-        <button onClick={SpeechRecognition.startListening}>Start</button>
-        <button onClick={SpeechRecognition.stopListening}>Stop</button>
-        <p>{transcript}</p>
-      </div>
+      <Webcam
+        ref={webcamRef}
+        muted={true}
+        style={{
+          position: "absolute",
+          marginLeft: "auto",
+          marginRight: "auto",
+          left: 0,
+          right: 0,
+          textAlign: "center",
+          zindex: 9,
+          width: 640,
+          height: 480,
+        }}
+      />
+
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "absolute",
+          marginLeft: "auto",
+          marginRight: "auto",
+          left: 0,
+          right: 0,
+          textAlign: "center",
+          zindex: 8,
+          width: 640,
+          height: 480,
+        }}
+      />
     </div>
   );
 }
