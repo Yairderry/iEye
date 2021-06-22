@@ -1,22 +1,39 @@
 import "./styles/App.css";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useEffect, useState } from "react";
+
+// importing models
 import * as tf from "@tensorflow/tfjs";
 import * as cocossd from "@tensorflow-models/coco-ssd";
+import * as faceapi from "face-api.js";
 import { recognize } from "tesseract.js";
+
+// importing special react libraries
 import Webcam from "react-webcam";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
+
 import { drawRect, findCenterOfMass, viewToText } from "./utils";
 
 function App() {
-  const webcamRef = useRef();
-  const canvasRef = useRef();
+  const webcamRef = useRef(null);
+  const canvasRef = useRef(null);
+
   const [net, setNet] = useState();
 
+  let { transcript, listening, browserSupportsSpeechRecognition } =
+    useSpeechRecognition();
+
   const loadModels = async () => {
-    const currentNet = await cocossd.load();
-    setNet(currentNet);
+    const [loadedCocoNet] = await Promise.all([
+      cocossd.load(),
+      faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
+      faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
+      faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
+      faceapi.nets.faceExpressionNet.loadFromUri("/models"),
+      faceapi.nets.ageGenderNet.loadFromUri("./models"),
+    ]);
+    setNet(loadedCocoNet);
   };
 
   const setRefs = () => {
@@ -28,6 +45,7 @@ function App() {
       return setTimeout(setRefs, 10);
 
     // Get Video Properties
+    const video = webcamRef.current.video;
     const videoWidth = webcamRef.current.video.videoWidth;
     const videoHeight = webcamRef.current.video.videoHeight;
 
@@ -38,6 +56,7 @@ function App() {
     // Set canvas height and width
     canvasRef.current.width = videoWidth;
     canvasRef.current.height = videoHeight;
+    return video;
   };
 
   const textToSpeech = (text) => {
@@ -46,24 +65,56 @@ function App() {
     speechSynthesis.speak(utter);
   };
 
+  const describe = async () => {
+    const video = setRefs();
+    const canvas = canvasRef.current;
+    const displaySize = { width: video.width, height: video.height };
+
+    faceapi.matchDimensions(canvas, displaySize);
+
+    const detections = await faceapi
+      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+      .withFaceLandmarks()
+      .withFaceExpressions()
+      .withAgeAndGender();
+    const resizedDetections = faceapi.resizeResults(detections, displaySize);
+    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
+    faceapi.draw.drawDetections(canvas, resizedDetections);
+    faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
+    faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
+    resizedDetections.forEach((result) => {
+      const { age, gender, genderProbability } = result;
+      new faceapi.draw.DrawTextField(
+        [
+          `${Math.round(age, 0)} years`,
+          `${gender} (${Math.round(genderProbability)})`,
+        ],
+        result.detection.box.bottomRight
+      ).draw(canvas);
+    });
+    console.log(detections);
+  };
+
   const display = async () => {
-    const video = webcamRef.current.video;
+    const video = setRefs();
+    const canvas = canvasRef.current;
+    // Make Detections
     const obj = await net.detect(video);
 
-    // Draw detection for development
-    const ctx = canvasRef.current.getContext("2d");
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    // Draw mesh
+    const ctx = canvas.getContext("2d");
     drawRect(obj, ctx);
 
     const view = findCenterOfMass(obj, {
-      height: canvasRef.current.height,
-      width: canvasRef.current.width,
+      height: canvas.height,
+      width: canvas.width,
     });
+
     return viewToText(view);
   };
 
   const read = async () => {
-    const video = webcamRef.current.video;
+    const video = setRefs();
     const canvas = canvasRef.current;
 
     const context = canvas.getContext("2d");
@@ -75,17 +126,15 @@ function App() {
       logger: (m) => console.log(m),
     });
     context.clearRect(0, 0, canvas.width, canvas.height);
+    console.log(text);
     return text;
   };
 
-  let { transcript, listening, browserSupportsSpeechRecognition } =
-    useSpeechRecognition();
-
+  // loading models
   useEffect(() => {
-    setRefs();
     loadModels()
-      .then(() => console.log("models loaded."))
-      .catch((err) => console.log(err));
+      .then(() => console.log("Models loaded."))
+      .catch((err) => console.log("Failed to load models.", err));
   }, []);
 
   // Make sure the device is always listening to new commands
@@ -108,11 +157,14 @@ function App() {
       case "read":
         console.log("reading...");
         read()
-          .then((text) => console.log(text))
+          .then((text) => textToSpeech(text))
           .catch((err) => console.log(err));
         break;
       case "describe":
         console.log("describing...");
+        describe()
+          .then((data) => console.log(data))
+          .catch((err) => console.log(err));
         break;
       case "find":
         console.log("finding...");
