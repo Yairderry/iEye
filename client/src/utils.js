@@ -19,7 +19,7 @@ export const drawRect = (detections, ctx) => {
   });
 };
 
-export const findCenterOfMass = (detections, videoDims) => {
+export const convertObjectDetectionsToObject = (detections, videoDims) => {
   const state = {};
 
   // Loop through each prediction
@@ -45,6 +45,46 @@ export const findCenterOfMass = (detections, videoDims) => {
 
     location.push(text);
   });
+  return state;
+};
+
+export const convertFaceDetectionsToObject = (detections, videoDims) => {
+  const state = {};
+
+  // Loop through each prediction
+  detections.forEach(
+    ({ detection, age, gender, genderProbability, expressions }) => {
+      // Find center of mass
+      const { x, y, width, height } = detection.box;
+      const [centerX, centerY] = [x + width / 2, y + height / 2];
+
+      // Find it's position relative to the board
+      const xRelation = centerX / videoDims.width;
+      const xPosition =
+        xRelation >= 2 / 3 ? "Left" : xRelation >= 1 / 3 ? "" : "Right";
+      const yRelation = centerY / videoDims.height;
+      const yPosition =
+        yRelation >= 2 / 3 ? "Bottom" : yRelation >= 1 / 3 ? "" : "Top";
+      const position = xPosition + yPosition;
+
+      // get age, gender and expression
+      const faceData = {
+        name: "person",
+        age: Math.floor(age),
+        gender,
+        genderProbability,
+        expressions,
+      };
+
+      // add to new state
+      let location = state[position ? position : "InFront"];
+
+      if (!location)
+        return (state[position ? position : "InFront"] = [faceData]);
+
+      location.push(faceData);
+    }
+  );
   return state;
 };
 
@@ -77,24 +117,40 @@ export const viewToText = (view) => {
   return text.join(" ");
 };
 
-export const arrayCompare = (_arr1, _arr2) => {
-  if (
-    !Array.isArray(_arr1) ||
-    !Array.isArray(_arr2) ||
-    _arr1.length !== _arr2.length
-  ) {
-    return false;
+export const facesToText = (faces) => {
+  const text = [];
+
+  for (const key in faces) {
+    const detections = faces[key];
+
+    if (detections.length <= 0) continue;
+
+    const textLines = detections.map(({ name, age, gender, expressions }) => {
+      const likelyExpressions = Object.entries(expressions).filter(
+        (expression) => expression[1] > 0.35
+      );
+
+      const expressionsText = likelyExpressions.map((expression, i) => {
+        const only = likelyExpressions.length === 1;
+        const last = likelyExpressions.length - 1 === i;
+        const secondToLast = likelyExpressions.length - 2 === i;
+        return only
+          ? expression[0]
+          : secondToLast
+          ? `${expression[0]} `
+          : last
+          ? `and ${expression[0]}.`
+          : `${expression[0]}, `;
+      });
+
+      return `${gender} ${name} around the age of ${age} ${
+        key === "InFront" ? "in front of you." : `on your ${key}.`
+      } ${gender === "male" ? "he" : "she"} is ${expressionsText}`;
+    });
+
+    textLines.unshift(`there is 1 `);
+
+    text.push(textLines);
   }
-
-  // .concat() to not mutate arguments
-  const arr1 = _arr1.concat().sort();
-  const arr2 = _arr2.concat().sort();
-
-  for (let i = 0; i < arr1.length; i++) {
-    if (arr1[i] !== arr2[i]) {
-      return false;
-    }
-  }
-
-  return true;
+  return text.join(" ");
 };

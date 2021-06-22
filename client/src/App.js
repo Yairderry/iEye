@@ -13,7 +13,13 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 
-import { drawRect, findCenterOfMass, viewToText } from "./utils";
+import {
+  drawRect,
+  convertObjectDetectionsToObject,
+  convertFaceDetectionsToObject,
+  viewToText,
+  facesToText,
+} from "./utils";
 
 function App() {
   const webcamRef = useRef(null);
@@ -92,7 +98,12 @@ function App() {
         result.detection.box.bottomRight
       ).draw(canvas);
     });
-    console.log(detections);
+
+    const view = convertFaceDetectionsToObject(resizedDetections, {
+      height: canvas.height,
+      width: canvas.width,
+    });
+    return facesToText(view);
   };
 
   const display = async () => {
@@ -105,7 +116,7 @@ function App() {
     const ctx = canvas.getContext("2d");
     drawRect(obj, ctx);
 
-    const view = findCenterOfMass(obj, {
+    const view = convertObjectDetectionsToObject(obj, {
       height: canvas.height,
       width: canvas.width,
     });
@@ -163,7 +174,7 @@ function App() {
       case "describe":
         console.log("describing...");
         describe()
-          .then((data) => console.log(data))
+          .then((text) => textToSpeech(text))
           .catch((err) => console.log(err));
         break;
       case "find":
