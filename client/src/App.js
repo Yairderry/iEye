@@ -13,13 +13,13 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 
+// importing custom functions
+import { drawRect, drawFaces } from "./utils/draw";
+import { helpText, viewToText, facesToText } from "./utils/texts";
 import {
-  drawRect,
   convertObjectDetectionsToObject,
   convertFaceDetectionsToObject,
-  viewToText,
-  facesToText,
-} from "./utils";
+} from "./utils/convertDetections";
 
 function App() {
   const webcamRef = useRef(null);
@@ -84,20 +84,8 @@ function App() {
       .withFaceExpressions()
       .withAgeAndGender();
     const resizedDetections = faceapi.resizeResults(detections, displaySize);
-    canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-    faceapi.draw.drawDetections(canvas, resizedDetections);
-    faceapi.draw.drawFaceLandmarks(canvas, resizedDetections);
-    faceapi.draw.drawFaceExpressions(canvas, resizedDetections);
-    resizedDetections.forEach((result) => {
-      const { age, gender, genderProbability } = result;
-      new faceapi.draw.DrawTextField(
-        [
-          `${Math.round(age, 0)} years`,
-          `${gender} (${Math.round(genderProbability)})`,
-        ],
-        result.detection.box.bottomRight
-      ).draw(canvas);
-    });
+
+    drawFaces(resizedDetections, canvas, faceapi);
 
     const view = convertFaceDetectionsToObject(resizedDetections, {
       height: canvas.height,
@@ -165,6 +153,11 @@ function App() {
     return text;
   };
 
+  const help = () => {
+    const helpLines = helpText("John");
+    for (let i = 0; i < helpLines.length; i++) textToSpeech(helpLines[i]);
+  };
+
   // loading models
   useEffect(() => {
     loadModels()
@@ -214,6 +207,7 @@ function App() {
         break;
       case "help":
         console.log("helping...");
+        help();
         break;
       default:
         break;
