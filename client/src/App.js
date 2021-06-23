@@ -14,12 +14,8 @@ import SpeechRecognition, {
 } from "react-speech-recognition";
 
 // importing custom functions
-import { drawRect, drawFaces } from "./utils/draw";
-import { helpText, viewToText, facesToText } from "./utils/texts";
-import {
-  convertObjectDetectionsToObject,
-  convertFaceDetectionsToObject,
-} from "./utils/convertDetections";
+import { find, help, describe, display, read } from "./utils/actions";
+import { textToSpeech } from "./utils/texts";
 
 function App() {
   const webcamRef = useRef(null);
@@ -40,122 +36,6 @@ function App() {
       faceapi.nets.ageGenderNet.loadFromUri("./models"),
     ]);
     setNet(loadedCocoNet);
-  };
-
-  const setRefs = () => {
-    if (
-      typeof webcamRef.current === "undefined" ||
-      webcamRef.current === null ||
-      webcamRef.current.video.readyState !== 4
-    )
-      return setTimeout(setRefs, 10);
-
-    // Get Video Properties
-    const video = webcamRef.current.video;
-    const videoWidth = webcamRef.current.video.videoWidth;
-    const videoHeight = webcamRef.current.video.videoHeight;
-
-    // Set video width
-    webcamRef.current.video.width = videoWidth;
-    webcamRef.current.video.height = videoHeight;
-
-    // Set canvas height and width
-    canvasRef.current.width = videoWidth;
-    canvasRef.current.height = videoHeight;
-    return video;
-  };
-
-  const textToSpeech = (text) => {
-    const utter = new SpeechSynthesisUtterance(text);
-    utter.rate = 0.85;
-    speechSynthesis.speak(utter);
-  };
-
-  const describe = async () => {
-    const video = setRefs();
-    const canvas = canvasRef.current;
-    const displaySize = { width: video.width, height: video.height };
-
-    faceapi.matchDimensions(canvas, displaySize);
-
-    const detections = await faceapi
-      .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
-      .withFaceLandmarks()
-      .withFaceExpressions()
-      .withAgeAndGender();
-    const resizedDetections = faceapi.resizeResults(detections, displaySize);
-
-    drawFaces(resizedDetections, canvas, faceapi);
-
-    const view = convertFaceDetectionsToObject(resizedDetections, {
-      height: canvas.height,
-      width: canvas.width,
-    });
-    return facesToText(view);
-  };
-
-  const display = async () => {
-    const video = setRefs();
-    const canvas = canvasRef.current;
-    // Make Detections
-    const obj = await net.detect(video);
-
-    // Draw mesh
-    const ctx = canvas.getContext("2d");
-    drawRect(obj, ctx);
-
-    const view = convertObjectDetectionsToObject(obj, {
-      height: canvas.height,
-      width: canvas.width,
-    });
-
-    return viewToText(view);
-  };
-
-  // find function for find command
-  const find = async (objToFind) => {
-    const video = setRefs();
-    const canvas = canvasRef.current;
-    // Make Detections
-    const obj = await net.detect(video);
-
-    // Draw mesh
-    const ctx = canvas.getContext("2d");
-    drawRect(obj, ctx);
-
-    const view = convertObjectDetectionsToObject(obj, {
-      height: canvas.height,
-      width: canvas.width,
-    });
-    // Check if the object to find is in the view
-    for (const place in view) {
-      for (const item of view[place]) {
-        if (item === objToFind) return `The ${objToFind} is ${place} of you`;
-      }
-    }
-    return `There is no ${objToFind} in your area`;
-  };
-
-  const read = async () => {
-    const video = setRefs();
-    const canvas = canvasRef.current;
-
-    const context = canvas.getContext("2d");
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(video, 0, 0, canvas.width, canvas.height);
-    const {
-      data: { text },
-    } = await recognize(canvas, "eng+heb", {
-      logger: (m) => console.log(m),
-    });
-    context.clearRect(0, 0, canvas.width, canvas.height);
-    console.log(text);
-    return text;
-  };
-
-  const help = () => {
-    const helpLines = helpText("John");
-    for (let i = 0; i < helpLines.length; i++) textToSpeech(helpLines[i]);
   };
 
   // loading models
@@ -183,25 +63,25 @@ function App() {
     switch (command) {
       case "display":
         console.log("displaying...");
-        display()
+        display({ canvasRef, webcamRef, net })
           .then((text) => textToSpeech(text))
           .catch((err) => console.log(err));
         break;
       case "read":
         console.log("reading...");
-        read()
+        read({ canvasRef, webcamRef, recognize })
           .then((text) => textToSpeech(text))
           .catch((err) => console.log(err));
         break;
       case "describe":
         console.log("describing...");
-        describe()
+        describe({ canvasRef, webcamRef, faceapi })
           .then((text) => textToSpeech(text))
           .catch((err) => console.log(err));
         break;
       case "find":
         console.log("finding...");
-        find(obj)
+        find(obj, { canvasRef, webcamRef, net })
           .then((text) => textToSpeech(text))
           .catch((err) => console.log(err));
         break;

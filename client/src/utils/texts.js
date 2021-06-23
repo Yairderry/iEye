@@ -6,7 +6,7 @@ export const helpText = (userName) => {
     `If you'd like me to read the text i detected say "read text". The default languages are English and Hebrew.`,
     `If you'd like me to find a certain object near you say "find" followed by the name of the object.`,
     `If you'd like read you the current settings say "list settings".`,
-    `If you'd like change the settings say "set X as Y" where 'X' the name of the settings and 'Y' is the new value.`,
+    `If you'd like change the settings say "set X as Y" where 'X' is the name of the settings and 'Y' is the new value.`,
   ];
 };
 
@@ -75,4 +75,10 @@ export const facesToText = (faces) => {
     text.push(textLines);
   }
   return text.join(" ");
+};
+
+export const textToSpeech = (text) => {
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 0.85;
+  speechSynthesis.speak(utter);
 };
