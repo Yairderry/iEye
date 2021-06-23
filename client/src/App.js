@@ -22,11 +22,13 @@ function App() {
   const canvasRef = useRef(null);
 
   const [net, setNet] = useState();
+  const [answer, setAnswer] = useState(false);
 
   let { transcript, listening, browserSupportsSpeechRecognition } =
     useSpeechRecognition();
 
   const loadModels = async () => {
+    setAnswer(true);
     const [loadedCocoNet] = await Promise.all([
       cocossd.load(),
       faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
@@ -36,6 +38,7 @@ function App() {
       faceapi.nets.ageGenderNet.loadFromUri("./models"),
     ]);
     setNet(loadedCocoNet);
+    setAnswer(false);
   };
 
   // loading models
@@ -49,6 +52,7 @@ function App() {
   useEffect(() => {
     if (!listening) SpeechRecognition.startListening();
     if (!transcript) return;
+    if (answer) return;
 
     let command = transcript.split(" ")[0];
     let obj = transcript.split(" ")[1];
@@ -63,31 +67,38 @@ function App() {
     switch (command) {
       case "display":
         console.log("displaying...");
+        setAnswer(true);
         display({ canvasRef, webcamRef, net })
-          .then((text) => textToSpeech(text))
+          .then((text) => textToSpeech(text, setAnswer))
           .catch((err) => console.log(err));
         break;
       case "read":
         console.log("reading...");
+        setAnswer(true);
         read({ canvasRef, webcamRef, recognize })
-          .then((text) => textToSpeech(text))
+          .then((text) => textToSpeech(text, setAnswer))
           .catch((err) => console.log(err));
         break;
       case "describe":
         console.log("describing...");
+        setAnswer(true);
         describe({ canvasRef, webcamRef, faceapi })
-          .then((text) => textToSpeech(text))
+          .then((text) => textToSpeech(text, setAnswer))
           .catch((err) => console.log(err));
         break;
       case "find":
         console.log("finding...");
+        setAnswer(true);
         find(obj, { canvasRef, webcamRef, net })
-          .then((text) => textToSpeech(text))
+          .then((text) => textToSpeech(text, setAnswer))
           .catch((err) => console.log(err));
         break;
       case "help":
         console.log("helping...");
-        help();
+        setAnswer(true);
+        const helpLines = help();
+        for (let i = 0; i < helpLines.length; i++)
+          textToSpeech(helpLines[i], setAnswer);
         break;
       default:
         break;

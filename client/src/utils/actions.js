@@ -1,5 +1,5 @@
 import { drawRect, drawFaces } from "./draw";
-import { helpText, viewToText, facesToText, textToSpeech } from "./texts";
+import { helpText, viewToText, facesToText } from "./texts";
 import {
   convertObjectDetectionsToObject,
   convertFaceDetectionsToObject,
@@ -110,6 +110,5 @@ export const read = async ({ canvasRef, webcamRef, recognize }) => {
 };
 
 export const help = () => {
-  const helpLines = helpText("John");
-  for (let i = 0; i < helpLines.length; i++) textToSpeech(helpLines[i]);
+  return helpText("John");
 };

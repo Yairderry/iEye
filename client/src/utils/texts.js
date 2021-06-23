@@ -77,8 +77,11 @@ export const facesToText = (faces) => {
   return text.join(" ");
 };
 
-export const textToSpeech = (text) => {
+export const textToSpeech = (text, setAnswer) => {
   const utter = new SpeechSynthesisUtterance(text);
   utter.rate = 0.85;
+  utter.onend = () => {
+    setAnswer(false);
+  };
   speechSynthesis.speak(utter);
 };
