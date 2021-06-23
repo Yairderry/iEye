@@ -124,6 +124,30 @@ function App() {
     return viewToText(view);
   };
 
+  // find function for find command
+  const find = async (objToFind) => {
+    const video = setRefs();
+    const canvas = canvasRef.current;
+    // Make Detections
+    const obj = await net.detect(video);
+
+    // Draw mesh
+    const ctx = canvas.getContext("2d");
+    drawRect(obj, ctx);
+
+    const view = convertObjectDetectionsToObject(obj, {
+      height: canvas.height,
+      width: canvas.width,
+    });
+    // Check if the object to find is in the view
+    for (const place in view) {
+      for (const item of view[place]) {
+        if (item === objToFind) return `The ${objToFind} is ${place} of you`;
+      }
+    }
+    return `There is no ${objToFind} in your area`;
+  };
+
   const read = async () => {
     const video = setRefs();
     const canvas = canvasRef.current;
@@ -154,6 +178,7 @@ function App() {
     if (!transcript) return;
 
     let command = transcript.split(" ")[0];
+    let obj = transcript.split(" ")[1];
 
     // In case the device support hebrew
     if (command.split("")[0] === "‏") command = command.slice(1);
@@ -179,6 +204,9 @@ function App() {
         break;
       case "find":
         console.log("finding...");
+        find(obj)
+          .then((text) => textToSpeech(text))
+          .catch((err) => console.log(err));
         break;
       case "help":
         console.log("helping...");
