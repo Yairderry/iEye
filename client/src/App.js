@@ -180,6 +180,10 @@ function App() {
     let command = transcript.split(" ")[0];
     let obj = transcript.split(" ")[1];
 
+    // In case the object consists of two words
+    if (transcript.split(" ")[2] !== undefined)
+      obj = transcript.split(" ")[1] + " " + transcript.split(" ")[2];
+
     // In case the device support hebrew
     if (command.split("")[0] === "‏") command = command.slice(1);
 
