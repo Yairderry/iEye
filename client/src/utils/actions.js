@@ -1,3 +1,4 @@
+import axios from "axios";
 import { drawRect, drawFaces } from "./draw";
 import { helpText, viewToText, facesToText } from "./texts";
 import {
@@ -51,23 +52,35 @@ export const find = async (objToFind, { canvasRef, webcamRef, net }) => {
   return `There is no ${objToFind} in your area`;
 };
 
-export const describe = async ({ canvasRef, webcamRef, faceapi }) => {
+export const describe = async ({
+  canvasRef,
+  webcamRef,
+  faceapi,
+  labeledImages,
+}) => {
   const video = setRefs(webcamRef, canvasRef);
   const canvas = canvasRef.current;
   const displaySize = { width: video.width, height: video.height };
+  const faceMatcher = new faceapi.FaceMatcher(labeledImages, 0.8);
 
   faceapi.matchDimensions(canvas, displaySize);
 
   const detections = await faceapi
-    .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions())
+    .detectAllFaces(video)
     .withFaceLandmarks()
     .withFaceExpressions()
-    .withAgeAndGender();
+    .withAgeAndGender()
+    .withFaceDescriptors();
+
   const resizedDetections = faceapi.resizeResults(detections, displaySize);
 
-  drawFaces(resizedDetections, canvas, faceapi);
+  const results = resizedDetections.map((d) => {
+    return faceMatcher.findBestMatch(d.descriptor);
+  });
 
-  const view = convertFaceDetectionsToObject(resizedDetections, {
+  drawFaces(resizedDetections, results, canvas, faceapi);
+
+  const view = convertFaceDetectionsToObject(resizedDetections, results, {
     height: canvas.height,
     width: canvas.width,
   });
@@ -111,4 +124,38 @@ export const read = async ({ canvasRef, webcamRef, recognize }) => {
 
 export const help = () => {
   return helpText("John");
+};
+
+export const saveFace = async (name, { webcamRef }) => {
+  const imageSrc = webcamRef.current.getScreenshot();
+
+  const { data } = await axios.post(
+    `http://localhost:8080/api/face/save/${name}`,
+    {
+      data: imageSrc,
+    }
+  );
+
+  return data;
+};
+
+export const loadLabeledImages = async ({ faceapi }) => {
+  const { data } = await axios.get(`http://localhost:8080/api/face/labels`);
+
+  return Promise.all(
+    data.map(async ({ name, count }) => {
+      const descriptions = [];
+      for (let i = 1; i <= count; i++) {
+        const img = await faceapi.fetchImage(
+          `http://localhost:8080/api/face/${name}/${i}`
+        );
+        const detections = await faceapi
+          .detectAllFaces(img)
+          .withFaceLandmarks()
+          .withFaceDescriptors();
+        descriptions.push(detections[0].descriptor);
+      }
+      return new faceapi.LabeledFaceDescriptors(name, descriptions);
+    })
+  );
 };

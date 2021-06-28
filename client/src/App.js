@@ -3,8 +3,8 @@ import React, { useRef, useEffect, useState } from "react";
 
 // importing models
 import * as tf from "@tensorflow/tfjs";
+import * as faceapi from "@vladmandic/face-api/dist/face-api.esm-nobundle.js";
 import * as cocossd from "@tensorflow-models/coco-ssd";
-import * as faceapi from "face-api.js";
 import { recognize } from "tesseract.js";
 
 // importing special react libraries
@@ -14,7 +14,15 @@ import SpeechRecognition, {
 } from "react-speech-recognition";
 
 // importing custom functions
-import { find, help, describe, display, read } from "./utils/actions";
+import {
+  find,
+  help,
+  describe,
+  display,
+  read,
+  saveFace,
+  loadLabeledImages,
+} from "./utils/actions";
 import { textToSpeech } from "./utils/texts";
 
 function App() {
@@ -22,6 +30,7 @@ function App() {
   const canvasRef = useRef(null);
 
   const [net, setNet] = useState();
+  const [labeledImages, setLabeledImages] = useState([]);
   const [answer, setAnswer] = useState(false);
 
   let { transcript, listening, browserSupportsSpeechRecognition } =
@@ -31,13 +40,16 @@ function App() {
     setAnswer(true);
     const [loadedCocoNet] = await Promise.all([
       cocossd.load(),
-      faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
-      faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
       faceapi.nets.faceRecognitionNet.loadFromUri("/models"),
+      faceapi.nets.faceLandmark68Net.loadFromUri("/models"),
+      faceapi.nets.ssdMobilenetv1.loadFromUri("/models"),
+      faceapi.nets.tinyFaceDetector.loadFromUri("/models"),
       faceapi.nets.faceExpressionNet.loadFromUri("/models"),
       faceapi.nets.ageGenderNet.loadFromUri("./models"),
     ]);
     setNet(loadedCocoNet);
+    const loadedLabeledImages = await loadLabeledImages({ faceapi });
+    setLabeledImages(loadedLabeledImages);
     setAnswer(false);
   };
 
@@ -63,6 +75,7 @@ function App() {
 
     // In case the device support hebrew
     if (command.split("")[0] === "‏") command = command.slice(1);
+    console.log(command, obj);
 
     switch (command) {
       case "display":
@@ -82,8 +95,15 @@ function App() {
       case "describe":
         console.log("describing...");
         setAnswer(true);
-        describe({ canvasRef, webcamRef, faceapi })
-          .then((text) => textToSpeech(text, setAnswer))
+        describe({ canvasRef, webcamRef, faceapi, labeledImages })
+          .then((text) => text.forEach((line) => textToSpeech(line, setAnswer)))
+          .catch((err) => console.log(err));
+        break;
+      case "save":
+        console.log("saving...");
+        setAnswer(true);
+        saveFace(obj, { webcamRef })
+          .then((res) => textToSpeech(res, setAnswer))
           .catch((err) => console.log(err));
         break;
       case "find":
@@ -114,6 +134,7 @@ function App() {
       <Webcam
         ref={webcamRef}
         muted={true}
+        screenshotFormat="image/jpeg"
         style={{
           position: "absolute",
           marginLeft: "auto",

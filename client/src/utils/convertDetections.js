@@ -27,12 +27,16 @@ export const convertObjectDetectionsToObject = (detections, videoDims) => {
   return state;
 };
 
-export const convertFaceDetectionsToObject = (detections, videoDims) => {
+export const convertFaceDetectionsToObject = (
+  detections,
+  results,
+  videoDims
+) => {
   const state = {};
 
   // Loop through each prediction
   detections.forEach(
-    ({ detection, age, gender, genderProbability, expressions }) => {
+    ({ detection, age, gender, genderProbability, expressions }, i) => {
       // Find center of mass
       const { x, y, width, height } = detection.box;
       const [centerX, centerY] = [x + width / 2, y + height / 2];
@@ -48,7 +52,7 @@ export const convertFaceDetectionsToObject = (detections, videoDims) => {
 
       // get age, gender and expression
       const faceData = {
-        name: "person",
+        name: results[i].label,
         age: Math.floor(age),
         gender,
         genderProbability,
