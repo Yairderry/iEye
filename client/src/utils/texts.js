@@ -65,16 +65,21 @@ export const facesToText = (faces) => {
           : `${expression[0]}, `;
       });
 
-      return `${gender} ${name} around the age of ${age} ${
-        key === "InFront" ? "in front of you." : `on your ${key}.`
-      } ${gender === "male" ? "he" : "she"} is ${expressionsText}`;
+      return `the one ${
+        key === "InFront" ? "in front of you" : `on your ${key}`
+      } is probably a ${gender} named ${name}, around the age of ${age} ${
+        gender === "male" ? "he" : "she"
+      } is ${expressionsText}`;
     });
 
-    textLines.unshift(`there is 1 `);
-
-    text.push(textLines);
+    text.push(...textLines);
   }
-  return text.join(" ");
+  text.unshift(
+    text.length === 1
+      ? "there is 1 person in view. "
+      : `there are ${text.length} people in view. `
+  );
+  return text;
 };
 
 export const textToSpeech = (text, setAnswer) => {

@@ -94,7 +94,7 @@ function App() {
         console.log("describing...");
         setAnswer(true);
         describe({ canvasRef, webcamRef, faceapi, labeledImages })
-          .then((text) => textToSpeech(text, setAnswer))
+          .then((text) => text.forEach((line) => textToSpeech(line, setAnswer)))
           .catch((err) => console.log(err));
         break;
       case "find":
