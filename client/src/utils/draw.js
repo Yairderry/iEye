@@ -19,19 +19,26 @@ export const drawRect = (detections, ctx) => {
   });
 };
 
-export const drawFaces = (detections, canvas, faceapi) => {
+export const drawFaces = (detections, results, canvas, faceapi) => {
   canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height);
-  faceapi.draw.drawDetections(canvas, detections);
   faceapi.draw.drawFaceLandmarks(canvas, detections);
   faceapi.draw.drawFaceExpressions(canvas, detections);
-  detections.forEach((result) => {
-    const { age, gender, genderProbability } = result;
-    new faceapi.draw.DrawTextField(
-      [
-        `${Math.round(age, 0)} years`,
-        `${gender} (${Math.round(genderProbability)})`,
-      ],
-      result.detection.box.bottomRight
-    ).draw(canvas);
+  results.forEach((result, i) => {
+    detections.forEach((result) => {
+      const { age, gender, genderProbability } = result;
+      new faceapi.draw.DrawTextField(
+        [
+          `${Math.round(age, 0)} years`,
+          `${gender} (${Math.round(genderProbability)})`,
+        ],
+        result.detection.box.bottomRight
+      ).draw(canvas);
+    });
+
+    const box = detections[i].detection.box;
+    const drawBox = new faceapi.draw.DrawBox(box, {
+      label: result.toString(),
+    });
+    drawBox.draw(canvas);
   });
 };
