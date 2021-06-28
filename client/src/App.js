@@ -20,6 +20,7 @@ import {
   describe,
   display,
   read,
+  saveFace,
   loadLabeledImages,
 } from "./utils/actions";
 import { textToSpeech } from "./utils/texts";
@@ -74,6 +75,7 @@ function App() {
 
     // In case the device support hebrew
     if (command.split("")[0] === "‏") command = command.slice(1);
+    console.log(command, obj);
 
     switch (command) {
       case "display":
@@ -95,6 +97,13 @@ function App() {
         setAnswer(true);
         describe({ canvasRef, webcamRef, faceapi, labeledImages })
           .then((text) => text.forEach((line) => textToSpeech(line, setAnswer)))
+          .catch((err) => console.log(err));
+        break;
+      case "save":
+        console.log("saving...");
+        setAnswer(true);
+        saveFace(obj, { webcamRef })
+          .then((res) => textToSpeech(res, setAnswer))
           .catch((err) => console.log(err));
         break;
       case "find":
@@ -125,6 +134,7 @@ function App() {
       <Webcam
         ref={webcamRef}
         muted={true}
+        screenshotFormat="image/jpeg"
         style={{
           position: "absolute",
           marginLeft: "auto",

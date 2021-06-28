@@ -126,6 +126,19 @@ export const help = () => {
   return helpText("John");
 };
 
+export const saveFace = async (name, { webcamRef }) => {
+  const imageSrc = webcamRef.current.getScreenshot();
+
+  const { data } = await axios.post(
+    `http://localhost:8080/api/face/save/${name}`,
+    {
+      data: imageSrc,
+    }
+  );
+
+  return data;
+};
+
 export const loadLabeledImages = async ({ faceapi }) => {
   const { data } = await axios.get(`http://localhost:8080/api/face/labels`);
 
