@@ -12,6 +12,7 @@ import { getDisplay, getFaces, getText } from "./utils/detections";
 import Label from "./components/Label";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system";
+import { PRIVATE_IP } from "@env";
 
 let recording = new Audio.Recording();
 
@@ -53,7 +54,7 @@ export default function App() {
       });
       console.log("[+] Converting Speech To Text");
       const { data } = await axios.post(
-        "http://" + PRIVATE_IP + ":8080/api/speech",
+        `http://${PRIVATE_IP}:8080/api/speech`,
         {
           base64,
         }

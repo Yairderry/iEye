@@ -1,5 +1,6 @@
 import axios from "axios";
 import { base64ImageToTensor, resizeImage } from "./imageManipulations";
+import { PRIVATE_IP } from "@env";
 
 export const getDisplay = async (camera, cocoSsdModel) => {
   if (!camera) throw new Error("Can't detect any cameras");
@@ -21,7 +22,7 @@ export const getText = async (camera) => {
     skipProcessing: true,
   });
   const image = await resizeImage(photo.uri, 400, 400);
-  const { data } = await axios.post("http://" + PRIVATE_IP + ":8080/api/text", {
+  const { data } = await axios.post(`http://${PRIVATE_IP}:8080/api/text`, {
     base64: image.base64,
   });
   console.log("[+] Photo Analysed");
@@ -35,7 +36,7 @@ export const getFaces = async (camera) => {
     skipProcessing: true,
   });
   const image = await resizeImage(photo.uri, 400, 400);
-  const { data } = await axios.post("http://" + PRIVATE_IP + ":8080/api/face", {
+  const { data } = await axios.post(`http://${PRIVATE_IP}:8080/api/face`, {
     base64: image.base64,
   });
   console.log("[+] Photo Analysed");

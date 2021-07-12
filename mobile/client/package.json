@@ -14,7 +14,9 @@
     "@tensorflow/tfjs-react-native": "^0.4.0",
     "axios": "^0.21.1",
     "expo": "~39.0.2",
+    "expo-av": "~8.6.0",
     "expo-camera": "^9.0.0",
+    "expo-file-system": "~9.2.0",
     "expo-gl": "~9.1.1",
     "expo-gl-cpp": "~9.1.2",
     "expo-image-manipulator": "~8.3.0",
@@ -25,12 +27,11 @@
     "react": "16.13.1",
     "react-dom": "16.13.1",
     "react-native": "https://github.com/expo/react-native/archive/sdk-39.0.4.tar.gz",
+    "react-native-dotenv": "^3.1.1",
     "react-native-elements": "^3.0.0-alpha.1",
     "react-native-fs": "^2.16.6",
     "react-native-svg": "^12.1.0",
-    "react-native-web": "~0.13.12",
-    "expo-av": "~8.6.0",
-    "expo-file-system": "~9.2.0"
+    "react-native-web": "~0.13.12"
   },
   "devDependencies": {
     "@babel/core": "~7.9.0"
