@@ -3,7 +3,6 @@ import { StyleSheet, View, ActivityIndicator } from "react-native";
 import { Text, Button, Overlay } from "react-native-elements";
 import Svg, { Rect, Text as SVGText } from "react-native-svg";
 import { Camera } from "expo-camera";
-import * as Speech from "expo-speech";
 import * as tf from "@tensorflow/tfjs";
 import "@tensorflow/tfjs-react-native";
 import * as cocoSsd from "@tensorflow-models/coco-ssd";
@@ -13,6 +12,11 @@ import Label from "./components/Label";
 import { Audio } from "expo-av";
 import * as FileSystem from "expo-file-system";
 import { PRIVATE_IP } from "@env";
+import {
+  convertObjectDetectionsToObject,
+  convertFaceDetectionsToObject,
+} from "./utils/convertDetections";
+import { textToSpeech, viewToText, facesToText } from "./utils/texts";
 
 let recording = new Audio.Recording();
 
@@ -20,6 +24,7 @@ export default function App() {
   const [text, setText] = useState("");
   const [transcript, setTranscript] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isAnswering, setIsAnswering] = useState(false);
   const [detections, setDetections] = useState([]);
   const [isTfReady, setIsTfReady] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -59,7 +64,6 @@ export default function App() {
           base64,
         }
       );
-      console.log("data:", data);
       setTranscript(data);
       setIsRecording(false);
     } catch (error) {
@@ -88,6 +92,24 @@ export default function App() {
           : await getFaces(cameraRef.current);
 
       action === "text" ? setText(data) : setDetections(data);
+
+      // convert data to correct format to read
+      const viewObject =
+        action === "display"
+          ? convertObjectDetectionsToObject(data, { width: 400, height: 400 })
+          : action === "faces"
+          ? convertFaceDetectionsToObject(data, { width: 400, height: 400 })
+          : data;
+
+      const linesToRead =
+        action === "display"
+          ? viewToText(viewObject)
+          : action === "faces"
+          ? facesToText(viewObject)
+          : data;
+
+      textToSpeech(linesToRead, setIsAnswering);
+
       setIsLoading(false);
     } catch (error) {
       console.log(error);
@@ -102,7 +124,11 @@ export default function App() {
         setStatus("Loading Model...");
         setIsLoading(true);
         let { status } = await Camera.requestPermissionsAsync();
-        setHasPermission(status === "granted");
+        let audioPermissionsStatus = (await Audio.requestPermissionsAsync())
+          .status;
+        setHasPermission(
+          status === "granted" && audioPermissionsStatus === "granted"
+        );
         await tf.ready();
         setIsTfReady(true);
         const model = await cocoSsd.load();
@@ -114,7 +140,6 @@ export default function App() {
   }, [isTfReady]);
 
   useEffect(() => {
-    console.log(transcript);
     if (!transcript) return;
 
     const words = transcript.split(" ");
@@ -149,6 +174,7 @@ export default function App() {
 
   return (
     <View style={styles.container}>
+      {/* loading screen */}
       <Overlay
         isVisible={isLoading}
         fullScreen={true}
@@ -162,30 +188,12 @@ export default function App() {
       {/* display face and object detections */}
       <View style={{ width: 400, height: 400, position: "relative" }}>
         <Camera
-          style={{
-            flex: 1,
-            position: "absolute",
-            width: 400,
-            height: 400,
-            top: 0,
-            left: 0,
-          }}
+          style={styles.display}
           ratio="1:1"
           type={type}
           ref={cameraRef}
         />
-        <Svg
-          height="400"
-          width="400"
-          style={{
-            flex: 1,
-            position: "absolute",
-            width: 400,
-            height: 400,
-            top: 0,
-            left: 0,
-          }}
-        >
+        <Svg height="400" width="400" style={styles.display}>
           {detections.map((detection, i) => (
             <>
               <Rect
@@ -331,5 +339,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 10,
+  },
+  display: {
+    flex: 1,
+    position: "absolute",
+    width: 400,
+    height: 400,
+    top: 0,
+    left: 0,
   },
 });
